@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Metbus COF - Control de Salidas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#0f172a; --panel:#1e293b; --panel2:#16213a; --border:#2d3b57;
@@ -37,6 +38,33 @@
   .role-btn.active.cof{background:rgba(59,130,246,.2); color:var(--accent2); border-color:var(--accent2);}
   .role-btn.active.admin{background:rgba(168,85,247,.2); color:var(--holiday); border-color:var(--holiday);}
   .role-btn:hover{color:var(--text);}
+
+  .export-btn{
+    padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;
+    border:1px solid var(--ok); background:rgba(34,197,94,.12); color:var(--ok);
+  }
+  .export-btn:hover{background:rgba(34,197,94,.22);}
+  .export-btn:disabled{opacity:.5; cursor:wait;}
+
+  .pin-btn{
+    padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;
+    border:1px solid var(--border); background:var(--bg); color:var(--muted);
+  }
+  .pin-btn:hover{ color:var(--text); border-color:var(--accent2); }
+
+  .pinned-bar{
+    gap:6px; padding:8px 16px; background:var(--panel2); border-bottom:1px solid var(--border);
+    flex-wrap:wrap; align-items:center; position:sticky; top:65px; z-index:28;
+  }
+  .pinned-tab{
+    display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:8px;
+    background:var(--bg); border:1px solid var(--border); font-size:13px; font-weight:700;
+    cursor:pointer; color:var(--muted);
+  }
+  .pinned-tab.active{ background:rgba(59,130,246,.15); border-color:var(--accent2); color:var(--accent2); }
+  .pinned-tab:hover{ color:var(--text); }
+  .pinned-remove{ color:var(--muted); font-weight:900; padding:0 2px; line-height:1; }
+  .pinned-remove:hover{ color:var(--bad); }
 
   .selector-bar{
     display:flex; align-items:center; gap:10px; flex-wrap:wrap;
@@ -156,6 +184,11 @@
   .tipo-salida.posicionamiento{background:rgba(59,130,246,.15); color:var(--accent2);}
   .tipo-salida.retorno{background:rgba(245,158,11,.15); color:var(--warn);}
 
+  tr.row-perdida td{ background:rgba(239,68,68,.16); }
+  tr.row-perdida:hover td{ background:rgba(239,68,68,.24); }
+  tr.row-perdida .hora-teo{ color:var(--bad); }
+  .perdida-input{ width:18px; height:18px; cursor:pointer; }
+
   .footer-note{color:var(--muted); font-size:12px; text-align:center; padding:20px;}
   .empty-state{color:var(--muted); text-align:center; padding:40px; font-size:14px;}
 
@@ -244,6 +277,7 @@
   <div class="selector-bar">
     <label for="serviceSelect">Servicio:</label>
     <select id="serviceSelect"></select>
+    <button class="pin-btn" id="pinServiceBtn" title="Fijar este servicio arriba, como una pesta&ntilde;a">&#128204; Fijar</button>
     <label for="monthSelect">Mes:</label>
     <select id="monthSelect"></select>
     <label for="daySelect">D&iacute;a:</label>
@@ -256,8 +290,11 @@
     <span class="role-btn" id="roleBtnCof" data-role="cof">COF</span>
     <span class="role-btn" id="roleBtnAdmin" data-role="admin">Administrador</span>
   </div>
+  <button class="export-btn" id="exportExcelBtn">Exportar Excel del d&iacute;a</button>
   <div class="syncstate"><span class="dot" id="syncDot"></span><span id="syncText">Sincronizado</span></div>
 </div>
+
+<div class="pinned-bar" id="pinnedBar" style="display:none;"></div>
 
 <div class="tabs">
   <a class="tab" href="#seccion-ida">Ir a IDA</a>
@@ -536,6 +573,54 @@ function populateServiceSelector(){
   sel.value = currentService;
   sel.addEventListener('change', () => { currentService = sel.value; loadAndRender(); });
 }
+
+// ---------- Servicios fijados (como pestañas), guardados en este navegador ----------
+const PINNED_STORAGE_KEY = 'metbus_pinned_services';
+function getPinnedServices(){
+  try{ return JSON.parse(localStorage.getItem(PINNED_STORAGE_KEY) || '[]'); }
+  catch(err){ return []; }
+}
+function setPinnedServices(list){
+  try{ localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(list)); }catch(err){}
+}
+function renderPinnedBar(){
+  const bar = document.getElementById('pinnedBar');
+  const pinned = getPinnedServices().filter(s => SERVICIOS.includes(s));
+  if(pinned.length === 0){
+    bar.style.display = 'none';
+    bar.innerHTML = '';
+    return;
+  }
+  bar.style.display = 'flex';
+  bar.innerHTML = pinned.map(s => `
+    <span class="pinned-tab ${s === currentService ? 'active' : ''}" data-serv="${s}">
+      ${s}
+      <span class="pinned-remove" data-remove="${s}" title="Quitar de fijados">&times;</span>
+    </span>
+  `).join('');
+  bar.querySelectorAll('.pinned-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      if(e.target.classList.contains('pinned-remove')) return;
+      currentService = tab.dataset.serv;
+      loadAndRender();
+    });
+  });
+  bar.querySelectorAll('.pinned-remove').forEach(x => {
+    x.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setPinnedServices(getPinnedServices().filter(s => s !== x.dataset.remove));
+      renderPinnedBar();
+    });
+  });
+}
+document.getElementById('pinServiceBtn').addEventListener('click', () => {
+  const pinned = getPinnedServices();
+  if(!pinned.includes(currentService)){
+    pinned.push(currentService);
+    setPinnedServices(pinned);
+  }
+  renderPinnedBar();
+});
 function populateMonthSelector(){
   const sel = document.getElementById('monthSelect');
   sel.innerHTML = '';
@@ -629,14 +714,16 @@ async function renderDirSection(dir){
         <th style="width:130px;">Rol Conductor</th>
         <th style="width:100px;">Estado</th>
         <th style="width:130px;">Tipo Salida</th>
+        <th style="width:90px;">P&eacute;rdida</th>
         <th>Observaci&oacute;n</th>
       </tr></thead><tbody></tbody>`;
     const tbody = table.querySelector('tbody');
 
     period.salidas.forEach(sal => {
-      const key = `${dir}|${sal.hora}`;
-      const rec = realData[key] || {bus:'', real:'', rol:'', obs:''};
+      const key = `${dir}|${sal.hora}|${sal.tipo}`;
+      const rec = realData[key] || {bus:'', real:'', rol:'', obs:'', perdida:false};
       const tr = document.createElement('tr');
+      if(rec.perdida) tr.classList.add('row-perdida');
       const estado = calcEstado(sal.hora, rec.real);
       const tipoInfo = tipoSalidaInfo(sal.tipo);
       if(canEditRealData){
@@ -647,6 +734,7 @@ async function renderDirSection(dir){
           <td><input type="text" class="rol-input" data-key="${key}" value="${rec.rol||''}" placeholder="-"></td>
           <td><span class="badge ${estado.cls}" data-badge="${key}">${estado.label}</span></td>
           <td><span class="tipo-salida ${tipoInfo.cls}">${tipoInfo.label}</span></td>
+          <td style="text-align:center;"><input type="checkbox" class="perdida-input" data-key="${key}" ${rec.perdida ? 'checked' : ''} title="Marcar como p\u00e9rdida de servicio"></td>
           <td><input type="text" class="obs-input" data-key="${key}" value="${rec.obs||''}" placeholder="-"></td>
         `;
       } else {
@@ -658,6 +746,7 @@ async function renderDirSection(dir){
           <td>${val(rec.rol)}</td>
           <td><span class="badge ${estado.cls}">${estado.label}</span></td>
           <td><span class="tipo-salida ${tipoInfo.cls}">${tipoInfo.label}</span></td>
+          <td style="text-align:center;"><input type="checkbox" disabled ${rec.perdida ? 'checked' : ''}></td>
           <td>${val(rec.obs)}</td>
         `;
       }
@@ -670,26 +759,29 @@ async function renderDirSection(dir){
     const progTimes = period.salidas.filter(s => (s.tipo||1) === 1).map(s=>s.hora);
     const realTimes = period.salidas
       .filter(s => (s.tipo||1) === 1)
-      .map(s => (realData[`${dir}|${s.hora}`]||{}).real)
+      .filter(s => !((realData[`${dir}|${s.hora}|${s.tipo}`]||{}).perdida))
+      .map(s => (realData[`${dir}|${s.hora}|${s.tipo}`]||{}).real)
       .filter(Boolean)
       .filter(r => r >= period.hora_inicio && r <= period.hora_fin);
     const progInt = computeIntervals(progTimes);
     const realInt = computeIntervals(realTimes);
-    const avgProg = progInt.length ? (progInt.reduce((a,b)=>a+b,0)/progInt.length).toFixed(1) : '-';
+    const avgProg = progInt.length ? (progInt.reduce((a,b)=>a+b,0)/progInt.length) : null;
     const avgReal = realInt.length ? (realInt.reduce((a,b)=>a+b,0)/realInt.length).toFixed(1) : '-';
     let regularidad = '-'; let regClass = '';
-    if(realInt.length >= 2){
-      const sd = stdDev(realInt);
-      const mean = realInt.reduce((a,b)=>a+b,0)/realInt.length;
-      const cv = mean>0 ? sd/mean : 0;
-      const reg = Math.max(0, Math.min(100, (1-cv)*100));
+    if(realInt.length >= 1 && avgProg !== null && avgProg > 0){
+      // Holgura: 40% del intervalo teórico del período, acotada entre 3 y 30 min.
+      const holgura = Math.min(30, Math.max(3, avgProg * 0.4));
+      const intervaloMax = avgProg + holgura;
+      const cumplen = realInt.filter(iv => iv <= intervaloMax).length;
+      const reg = (cumplen / realInt.length) * 100;
       regularidad = reg.toFixed(0) + '%';
       regClass = reg>=85 ? 'good' : (reg>=65 ? 'mid' : 'bad');
     }
+    const avgProgLabel = avgProg !== null ? avgProg.toFixed(1) : '-';
     metricsDiv.innerHTML = `
       <span>Program.: <b>${progTimes.length}</b></span>
       <span>Real: <b>${realTimes.length}</b></span>
-      <span>Interv. prog.: <b>${avgProg}</b> min</span>
+      <span>Interv. prog.: <b>${avgProgLabel}</b> min</span>
       <span>Interv. real: <b>${avgReal}</b> min</span>
       <span>Regularidad: <b class="metric-reg ${regClass}">${regularidad}</b></span>
     `;
@@ -715,6 +807,9 @@ function attachListeners(){
   });
   document.querySelectorAll('.hora-real-input').forEach(inp => {
     inp.addEventListener('blur', onHoraRealChange);
+  });
+  document.querySelectorAll('.perdida-input').forEach(inp => {
+    inp.addEventListener('change', onFieldChange);
   });
   document.querySelectorAll('.bus-input, .hora-real-input, .rol-input, .obs-input').forEach(inp => {
     inp.addEventListener('keydown', onEditableFieldKeydown);
@@ -777,11 +872,12 @@ function onHoraRealChange(e){
 }
 function onFieldChange(e){
   const key = e.target.dataset.key;
-  if(!realData[key]) realData[key] = {bus:'', real:'', rol:'', obs:''};
+  if(!realData[key]) realData[key] = {bus:'', real:'', rol:'', obs:'', perdida:false};
   if(e.target.classList.contains('bus-input')) realData[key].bus = e.target.value;
   if(e.target.classList.contains('rol-input')) realData[key].rol = e.target.value;
   if(e.target.classList.contains('hora-real-input')) realData[key].real = e.target.value;
   if(e.target.classList.contains('obs-input')) realData[key].obs = e.target.value;
+  if(e.target.classList.contains('perdida-input')) realData[key].perdida = e.target.checked;
   saveRealData();
   render();
 }
@@ -806,6 +902,7 @@ async function loadAndRender(){
   document.getElementById('serviceSelect').value = currentService;
   document.getElementById('monthSelect').value = currentMonth;
   document.getElementById('daySelect').value = currentDate;
+  renderPinnedBar();
   try{
     const value = await fbGet(realDataPath(currentService, currentDate));
     realData = value || {};
@@ -821,7 +918,16 @@ async function loadAndRender(){
 // entered data (Bus, Hora Real, Rol, Observación) shows up again instead of
 // appearing lost.
 async function migrateOldKeysIfNeeded(){
-  const isOldFormat = (k) => k.split('|').length === 3;
+  // Old format (very first version): "dir|periodo_ts|idx", e.g. "IDA|4|2".
+  // Current format: "dir|hora|tipo", e.g. "IDA|06:30|1".
+  // Both happen to have 3 parts, so we tell them apart by checking whether
+  // the middle part looks like an "HH:MM" time (current format) or a small
+  // period-number (old format).
+  const isOldFormat = (k) => {
+    const parts = k.split('|');
+    if(parts.length !== 3) return false;
+    return !/^\d{2}:\d{2}$/.test(parts[1]);
+  };
   const oldKeys = Object.keys(realData).filter(isOldFormat);
   if(oldKeys.length === 0) return;
 
@@ -842,7 +948,7 @@ async function migrateOldKeysIfNeeded(){
       if(!salidas) return;
       const sal = salidas[Number(idx)];
       if(!sal) return;
-      const newKey = `${dir}|${sal.hora}`;
+      const newKey = `${dir}|${sal.hora}|${sal.tipo}`;
       if(!realData[newKey]){
         realData[newKey] = realData[k];
         changed = true;
@@ -850,6 +956,34 @@ async function migrateOldKeysIfNeeded(){
       delete realData[k];
       changed = true;
     });
+  }
+
+  // Intermediate format (used briefly before this fix): "dir|hora", with no
+  // tipo. This is exactly the format that caused Comercial and
+  // Posicionamiento/Retorno departures sharing the same hora to collide.
+  // We recover it by matching hora against the current schedule; if more
+  // than one departure shares that hora (the ambiguous case), we prefer the
+  // Comercial one since it is the most likely intended entry.
+  const isTwoPartFormat = (k) => k.split('|').length === 2;
+  const twoPartKeys = Object.keys(realData).filter(isTwoPartFormat);
+  if(twoPartKeys.length > 0){
+    for(const dir of ['IDA','REGRESO']){
+      const flatSched = await getScheduleFlat(currentService, tipodia);
+      twoPartKeys.forEach(k => {
+        const [kdir, hora] = k.split('|');
+        if(kdir !== dir) return;
+        const candidates = flatSched[dir].filter(s => s.hora === hora);
+        if(candidates.length === 0) return; // schedule changed since, can't recover safely
+        const chosen = candidates.find(s => (s.tipo||1) === 1) || candidates[0];
+        const newKey = `${dir}|${hora}|${chosen.tipo}`;
+        if(!realData[newKey]){
+          realData[newKey] = realData[k];
+          changed = true;
+        }
+        delete realData[k];
+        changed = true;
+      });
+    }
   }
 
   if(changed) await saveRealData();
@@ -1020,6 +1154,87 @@ populateMonthSelector();
 populateDaySelector();
 loadAndRender();
 syncTimer = setInterval(pollUpdates, 8000);
+
+// ---------- Export to Excel (one sheet per servicio, for the selected day) ----------
+document.getElementById('exportExcelBtn').addEventListener('click', exportExcelDelDia);
+
+async function exportExcelDelDia(){
+  const btn = document.getElementById('exportExcelBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+
+  try{
+    const info = getDayInfo(currentDate);
+    const tipodia = info.tipo_dia;
+
+    const wb = XLSX.utils.book_new();
+
+    // Fetch every servicio's real data for this exact date in parallel.
+    btn.textContent = 'Descargando datos...';
+    const realDataByService = {};
+    await Promise.all(SERVICIOS.map(async (serv) => {
+      try{
+        const value = await fbGet(realDataPath(serv, currentDate));
+        realDataByService[serv] = value || {};
+      }catch(err){
+        realDataByService[serv] = {};
+      }
+    }));
+
+    btn.textContent = 'Generando Excel...';
+    for(const serv of SERVICIOS){
+      const flatSched = await getScheduleFlat(serv, tipodia);
+      const servRealData = realDataByService[serv] || {};
+      const rows = [];
+
+      for(const dir of ['IDA','REGRESO']){
+        const periods = groupByPeriod(flatSched[dir], tipodia, false);
+        periods.forEach(period => {
+          period.salidas.forEach(sal => {
+            const key = `${dir}|${sal.hora}|${sal.tipo}`;
+            const rec = servRealData[key] || {};
+            const estado = calcEstado(sal.hora, rec.real);
+            const tipoInfo = tipoSalidaInfo(sal.tipo);
+            rows.push({
+              'Direcci\u00f3n': dir,
+              'Per\u00edodo': period.nombre,
+              'Hora Te\u00f3rica': sal.hora,
+              'Bus': rec.bus || '',
+              'Hora Real': rec.real || '',
+              'Rol Conductor': rec.rol || '',
+              'Estado': estado.label,
+              'Tipo Salida': tipoInfo.label,
+              'P\u00e9rdida': rec.perdida ? 'S\u00ed' : 'No',
+              'Observaci\u00f3n': rec.obs || ''
+            });
+          });
+        });
+      }
+
+      if(rows.length === 0){
+        rows.push({ 'Direcci\u00f3n': '', 'Per\u00edodo': 'Sin salidas programadas', 'Hora Te\u00f3rica': '', 'Bus': '', 'Hora Real': '', 'Rol Conductor': '', 'Estado': '', 'Tipo Salida': '', 'P\u00e9rdida': '', 'Observaci\u00f3n': '' });
+      }
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [
+        {wch:10}, {wch:26}, {wch:12}, {wch:8}, {wch:10}, {wch:16}, {wch:12}, {wch:16}, {wch:9}, {wch:24}
+      ];
+      // Excel sheet names: max 31 chars, no \ / ? * [ ] :
+      const sheetName = String(serv).slice(0,31).replace(/[\\/?*\[\]:]/g, '_');
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    }
+
+    const fileName = `Metbus_COF_${currentDate}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }catch(err){
+    console.error('Error exportando Excel', err);
+    alert('Hubo un problema generando el Excel. Intenta de nuevo.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
 </script>
 </body>
 </html>
