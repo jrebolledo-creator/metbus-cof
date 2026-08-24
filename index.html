@@ -211,6 +211,25 @@
   .bus-tipo.warn{ background:rgba(245,158,11,.18); color:var(--warn); }
   .bus-tipo.unknown{ background:rgba(148,163,184,.2); color:var(--muted); }
 
+  tr.row-extra td{ background:rgba(37,99,235,.06); border-left:3px solid var(--accent2); }
+  .extra-tag{
+    display:inline-flex; align-items:center; gap:6px; background:transparent; border:none;
+    color:var(--accent2); font-weight:700; font-size:12px; cursor:pointer; padding:4px 2px;
+  }
+  .extra-tag:hover{ color:var(--bad); }
+  select.tiposalida-select{
+    width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px;
+    color:var(--text); padding:6px 6px; font-size:12px; font-weight:700;
+  }
+  .add-extra-row{
+    padding:10px 14px; border-top:1px dashed var(--border); text-align:left;
+  }
+  .add-extra-btn{
+    background:transparent; border:1px dashed var(--accent2); color:var(--accent2);
+    padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .add-extra-btn:hover{ background:rgba(37,99,235,.08); }
+
   .footer-note{color:var(--muted); font-size:12px; text-align:center; padding:20px;}
   .empty-state{color:var(--muted); text-align:center; padding:40px; font-size:14px;}
 
@@ -277,6 +296,35 @@
     background:var(--panel2); color:var(--muted); margin-left:8px;
   }
 
+  .bulk-form-row{
+    display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-bottom:14px;
+    background:var(--panel2); padding:12px; border-radius:8px;
+  }
+  .bulk-form-row label{ font-size:12px; color:var(--muted); font-weight:600; display:flex; align-items:center; gap:6px; }
+  .bulk-form-row input[type=date]{
+    background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text);
+    padding:6px 8px; font-size:13px;
+  }
+  .bulk-upload-btn{
+    padding:8px 18px; border-radius:8px; background:var(--holiday); color:white; border:none;
+    font-weight:700; font-size:13px; cursor:pointer; margin-top:4px;
+  }
+  .bulk-upload-btn:hover{ filter:brightness(1.1); }
+  .bulk-upload-btn:disabled{ opacity:.5; cursor:wait; }
+  .bulk-updates-list{ margin-top:18px; }
+  .bulk-update-item{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:10px 12px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px;
+    background:var(--bg); font-size:13px;
+  }
+  .bulk-update-info b{ color:var(--text); }
+  .bulk-update-services{ color:var(--muted); font-size:12px; margin-top:2px; }
+  .bulk-del-btn{
+    background:rgba(239,68,68,.15); color:var(--bad); border:none; border-radius:6px;
+    padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+  }
+  .bulk-del-btn:hover{ background:rgba(239,68,68,.3); }
+
   .modal-overlay{
     position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100;
     display:flex; align-items:center; justify-content:center;
@@ -339,10 +387,12 @@
 <div class="admin-toggle-bar" id="adminToggleBar" style="display:none;">
   <button class="admin-toggle-btn" id="adminMaintainerToggle">Abrir Mantenedor de Horarios Te&oacute;ricos</button>
   <button class="admin-toggle-btn" id="busMaintainerToggle">Abrir Mantenedor de Buses</button>
+  <button class="admin-toggle-btn" id="bulkMaintainerToggle">Abrir Mantenedor Masivo de Horarios</button>
 </div>
 
 <div class="admin-panel" id="adminPanel" style="display:none;"></div>
 <div class="bus-maintainer-panel" id="busMaintainerPanel" style="display:none;"></div>
+<div class="bus-maintainer-panel" id="bulkMaintainerPanel" style="display:none;"></div>
 
 <div class="content" id="content"></div>
 <div class="footer-note">Bus, Rol conductor, Hora Real y Observaci&oacute;n se guardan por servicio y d&iacute;a espec&iacute;fico, y se comparten en vivo con todos los que tengan esta planilla abierta.</div>
@@ -423,6 +473,11 @@ async function fbSet(path, value){
   if(!res.ok) throw new Error('Firebase PUT failed: ' + res.status);
   return await res.json();
 }
+async function fbDelete(path){
+  const res = await fetch(`${FIREBASE_URL}/${path}.json`, { method: 'DELETE' });
+  if(!res.ok) throw new Error('Firebase DELETE failed: ' + res.status);
+  return await res.json();
+}
 
 function timeToMinutes(t){
   const [h,m] = t.split(':').map(Number);
@@ -481,6 +536,71 @@ function tipoSalidaInfo(tipo){
   return {label:'Comercial', cls:'comercial'};
 }
 
+// ---------- Salidas adicionales (no programadas: refuerzo o correcci\u00f3n) ----------
+function getExtras(){
+  if(!Array.isArray(realData.extras)) realData.extras = [];
+  return realData.extras;
+}
+function getExtrasForPeriod(dir, periodoTs){
+  return getExtras().filter(ex => ex.dir === dir && ex.periodo_ts === periodoTs);
+}
+function generateExtraId(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
+async function addExtraDeparture(dir, periodoTs){
+  getExtras().push({
+    id: generateExtraId(), dir, periodo_ts: periodoTs,
+    bus:'', real:'', rol:'', obs:'', perdida:false, tipo:1
+  });
+  await saveRealData();
+  await render();
+}
+async function deleteExtraDeparture(id){
+  if(!confirm('\u00bfEliminar esta salida adicional?')) return;
+  realData.extras = getExtras().filter(ex => ex.id !== id);
+  await saveRealData();
+  await render();
+}
+function renderExtraRow(ex, dir, canEditRealData){
+  const busTipo = busTipoEstado(null, ex.bus);
+  const estadoLabel = ex.real ? 'Registrada' : 'Pendiente';
+  const estadoCls = ex.real ? 'ok' : 'pendiente';
+  if(canEditRealData){
+    const tipoOptions = [1,2,3].map(t => {
+      const info = tipoSalidaInfo(t);
+      return `<option value="${t}" ${ex.tipo===t?'selected':''}>${info.label}</option>`;
+    }).join('');
+    return `
+      <tr class="row-extra ${ex.perdida ? 'row-perdida' : ''}">
+        <td><input type="text" class="bus-input" data-extra-id="${ex.id}" data-dir="${dir}" value="${ex.bus||''}" maxlength="5" placeholder="-"></td>
+        <td style="text-align:center;"><span class="bus-tipo ${busTipo.cls}">${busTipo.label}</span></td>
+        <td class="hora-teo"><button type="button" class="extra-tag" data-del-extra="${ex.id}" title="Eliminar esta salida adicional">&#128465; Adicional</button></td>
+        <td><input type="text" class="hora-real-input hora-real" data-extra-id="${ex.id}" data-dir="${dir}" value="${ex.real||''}" placeholder="--:--"></td>
+        <td><input type="text" class="rol-input" data-extra-id="${ex.id}" data-dir="${dir}" value="${ex.rol||''}" maxlength="8" placeholder="-"></td>
+        <td><span class="badge ${estadoCls}">${estadoLabel}</span></td>
+        <td><select class="tiposalida-select" data-extra-id="${ex.id}">${tipoOptions}</select></td>
+        <td style="text-align:center;"><input type="checkbox" class="perdida-input" data-extra-id="${ex.id}" ${ex.perdida?'checked':''} title="Marcar como p\u00e9rdida de servicio"></td>
+        <td><input type="text" class="obs-input" data-extra-id="${ex.id}" data-dir="${dir}" value="${ex.obs||''}" placeholder="-"></td>
+      </tr>
+    `;
+  }
+  const val = (v) => v ? `<span class="readonly-val">${v}</span>` : `<span class="readonly-val empty">-</span>`;
+  const tipoInfo = tipoSalidaInfo(ex.tipo);
+  return `
+    <tr class="row-extra ${ex.perdida ? 'row-perdida' : ''}">
+      <td>${val(ex.bus)}</td>
+      <td style="text-align:center;"><span class="bus-tipo ${busTipo.cls}">${busTipo.label}</span></td>
+      <td class="hora-teo">Adicional</td>
+      <td>${val(ex.real)}</td>
+      <td>${val(ex.rol)}</td>
+      <td><span class="badge ${estadoCls}">${estadoLabel}</span></td>
+      <td><span class="tipo-salida ${tipoInfo.cls}">${tipoInfo.label}</span></td>
+      <td style="text-align:center;"><input type="checkbox" disabled ${ex.perdida?'checked':''}></td>
+      <td>${val(ex.obs)}</td>
+    </tr>
+  `;
+}
+
 // Compara el tipo de bus programado con el que realmente sali\u00f3 (seg\u00fan su
 // n\u00famero) y clasifica seg\u00fan capacidad: rojo si el real ofrece MENOS plazas
 // que lo programado, verde si coincide, amarillo si ofrece M\u00c1S plazas.
@@ -535,6 +655,46 @@ async function getScheduleFlat(servicio, tipodia){
   }
   scheduleCache[cacheKey] = sched;
   return sched;
+}
+
+// ---------- Mantenedor Masivo: actualizaciones de horario con rango de fechas ----------
+let bulkUpdatesCache = null;
+async function getBulkUpdates(){
+  if(bulkUpdatesCache) return bulkUpdatesCache;
+  try{
+    const remote = await fbGet('bulk_updates');
+    bulkUpdatesCache = remote || {};
+  }catch(err){ bulkUpdatesCache = {}; }
+  return bulkUpdatesCache;
+}
+async function refreshBulkUpdatesCache(){
+  bulkUpdatesCache = null;
+  return await getBulkUpdates();
+}
+function fechaEnRango(fecha, desde, hasta){
+  if(fecha < desde) return false;
+  if(hasta && fecha > hasta) return false;
+  return true;
+}
+async function findApplicableBulkUpdate(servicio, tipodia, fecha){
+  const updates = await getBulkUpdates();
+  const candidatos = Object.values(updates).filter(u =>
+    Array.isArray(u.servicios) && u.servicios.includes(servicio) &&
+    fechaEnRango(fecha, u.fecha_desde, u.fecha_hasta) &&
+    u.data && u.data[servicio] && u.data[servicio][tipodia]
+  );
+  if(candidatos.length === 0) return null;
+  candidatos.sort((a,b) => (b.uploaded_at||0) - (a.uploaded_at||0));
+  return candidatos[0].data[servicio][tipodia];
+}
+// Igual que getScheduleFlat, pero primero revisa si hay una actualizaci\u00f3n
+// masiva vigente para esa fecha exacta. Se usa en la vista principal y en la
+// exportaci\u00f3n; el Mantenedor de Horarios (por servicio) sigue usando
+// getScheduleFlat directamente, ya que \u00e9se edita el horario base permanente.
+async function getEffectiveScheduleFlat(servicio, tipodia, fecha){
+  const bulkMatch = await findApplicableBulkUpdate(servicio, tipodia, fecha);
+  if(bulkMatch) return bulkMatch;
+  return await getScheduleFlat(servicio, tipodia);
 }
 
 let scheduleSaveQueue = Promise.resolve();
@@ -602,7 +762,7 @@ function showPasswordModal(role, onSuccess){
 
 function setRole(role){
   currentRole = role;
-  if(role !== 'admin'){ adminPanelOpen = false; busPanelOpen = false; }
+  if(role !== 'admin'){ adminPanelOpen = false; busPanelOpen = false; bulkPanelOpen = false; }
   updateRoleButtons();
   updateAdminUI();
   render();
@@ -630,6 +790,7 @@ function updateAdminUI(){
   if(currentRole !== 'admin'){
     document.getElementById('adminPanel').style.display = 'none';
     document.getElementById('busMaintainerPanel').style.display = 'none';
+    document.getElementById('bulkMaintainerPanel').style.display = 'none';
   }
 }
 
@@ -642,6 +803,7 @@ document.getElementById('adminMaintainerToggle').addEventListener('click', () =>
 
 // ---------- Bus Maintainer Panel ----------
 let busPanelOpen = false;
+let bulkPanelOpen = false;
 document.getElementById('busMaintainerToggle').addEventListener('click', () => {
   busPanelOpen = !busPanelOpen;
   const panel = document.getElementById('busMaintainerPanel');
@@ -708,6 +870,222 @@ async function onBusFileSelected(e){
     resultDiv.textContent = 'No se pudo procesar el archivo. Verifica que sea un Excel con las columnas Codigo Interno, Plazas y Tipo.';
   }
 }
+
+// ---------- Mantenedor Masivo de Horarios (con rango de fechas) ----------
+function parseExcelTime(val){
+  if(val === null || val === undefined || val === '') return null;
+  if(val instanceof Date){
+    const h = String(val.getHours()).padStart(2,'0');
+    const m = String(val.getMinutes()).padStart(2,'0');
+    return `${h}:${m}`;
+  }
+  if(typeof val === 'number'){
+    // Excel guarda las horas como fracci\u00f3n de un d\u00eda (0.25 = 06:00)
+    let totalMin = Math.round(val * 24 * 60);
+    totalMin = ((totalMin % 1440) + 1440) % 1440;
+    const h = String(Math.floor(totalMin/60)).padStart(2,'0');
+    const m = String(totalMin % 60).padStart(2,'0');
+    return `${h}:${m}`;
+  }
+  if(typeof val === 'string'){
+    const match = val.trim().match(/^(\d{1,2}):(\d{2})/);
+    if(match) return `${match[1].padStart(2,'0')}:${match[2]}`;
+  }
+  return null;
+}
+function normalizeTipoDiaExcel(val){
+  const v = String(val||'').trim().toLowerCase();
+  if(v.startsWith('lab')) return 'Laboral';
+  if(v.startsWith('sab') || v.startsWith('s\u00e1b')) return 'S\u00e1bado';
+  if(v.startsWith('dom')) return 'Domingo';
+  return null;
+}
+function normalizeSentidoExcel(val){
+  const v = String(val||'').trim().toUpperCase();
+  if(v === 'I' || v === 'IDA') return 'IDA';
+  if(v === 'R' || v === 'REGRESO' || v === 'REG') return 'REGRESO';
+  return null;
+}
+function buildBulkDataFromRows(rows){
+  const data = {};
+  const serviciosSet = new Set();
+  let filasValidas = 0, filasInvalidas = 0;
+
+  rows.forEach(row => {
+    const servicio = String(row['Servicio'] ?? '').trim();
+    const sentido = normalizeSentidoExcel(row['Sentido']);
+    const tipodia = normalizeTipoDiaExcel(row['TipoDia'] ?? row['Tipo Dia'] ?? row['Tipo D\u00eda']);
+    const tipoBusRaw = String(row['TipoBus'] ?? row['Tipo Bus'] ?? '').trim().toUpperCase();
+    const tipoBus = ['A','B','C','D'].includes(tipoBusRaw) ? tipoBusRaw : null;
+    const tipoSalida = parseInt(row['TipoSalida'] ?? row['Tipo Salida'] ?? 1) || 1;
+    const hora = parseExcelTime(row['HoraSalida'] ?? row['Hora Salida']);
+
+    if(!servicio || !sentido || !tipodia || !hora){
+      filasInvalidas++;
+      return;
+    }
+    filasValidas++;
+    serviciosSet.add(servicio);
+    if(!data[servicio]) data[servicio] = {};
+    if(!data[servicio][tipodia]) data[servicio][tipodia] = {IDA:[], REGRESO:[]};
+    data[servicio][tipodia][sentido].push({ hora, tipo: tipoSalida, tipo_bus: tipoBus });
+  });
+
+  Object.values(data).forEach(porTipo => {
+    Object.values(porTipo).forEach(dirs => {
+      dirs.IDA.sort((a,b)=>a.hora.localeCompare(b.hora));
+      dirs.REGRESO.sort((a,b)=>a.hora.localeCompare(b.hora));
+    });
+  });
+
+  return { data, servicios: Array.from(serviciosSet), filasValidas, filasInvalidas };
+}
+
+function getFechaLimites(){
+  const meses = MESES_DISPONIBLES;
+  const primerMes = meses[0], ultimoMes = meses[meses.length-1];
+  const primerDia = CALENDAR_BY_MONTH[primerMes].dias[0].fecha;
+  const diasUltimo = CALENDAR_BY_MONTH[ultimoMes].dias;
+  const ultimoDia = diasUltimo[diasUltimo.length-1].fecha;
+  return { min: primerDia, max: ultimoDia };
+}
+
+function renderBulkMaintainerPanel(){
+  const panel = document.getElementById('bulkMaintainerPanel');
+  const limites = getFechaLimites();
+  panel.innerHTML = `
+    <h3>Mantenedor Masivo de Horarios</h3>
+    <p>Sube un Excel con las mismas columnas del archivo original de horarios
+    (<b>Servicio, Sentido, TipoDia, TipoBus, TipoSalida, HoraSalida</b>).
+    Solo se actualizan los servicios que vengan en el archivo; el resto sigue igual que antes.
+    Define desde cu\u00e1ndo rige el cambio, y hasta cu\u00e1ndo (o marca "Indefinido" si no tiene fecha de t\u00e9rmino).
+    Si dos actualizaciones se superponen para el mismo servicio y fecha, se usa la m\u00e1s reciente.</p>
+    <div class="bulk-form-row">
+      <label>Desde: <input type="date" id="bulkFechaDesde" min="${limites.min}" max="${limites.max}" value="${limites.min}"></label>
+      <label>Hasta: <input type="date" id="bulkFechaHasta" min="${limites.min}" max="${limites.max}" value="${limites.max}"></label>
+      <label><input type="checkbox" id="bulkIndefinido"> Indefinido (sin fecha de t\u00e9rmino)</label>
+    </div>
+    <input type="file" id="bulkFileInput" accept=".xlsx,.xls">
+    <button type="button" class="bulk-upload-btn" id="bulkUploadBtn">Subir y aplicar</button>
+    <div class="bus-upload-result" id="bulkUploadResult"></div>
+    <div class="bulk-updates-list" id="bulkUpdatesList"><p style="color:var(--muted); font-size:13px;">Cargando actualizaciones existentes...</p></div>
+  `;
+
+  document.getElementById('bulkIndefinido').addEventListener('change', (e) => {
+    document.getElementById('bulkFechaHasta').disabled = e.target.checked;
+  });
+  document.getElementById('bulkUploadBtn').addEventListener('click', onBulkUploadClick);
+
+  renderBulkUpdatesList();
+}
+
+async function renderBulkUpdatesList(){
+  const listDiv = document.getElementById('bulkUpdatesList');
+  const updates = await refreshBulkUpdatesCache();
+  const entries = Object.entries(updates).sort((a,b) => (b[1].uploaded_at||0) - (a[1].uploaded_at||0));
+
+  if(entries.length === 0){
+    listDiv.innerHTML = '<p style="color:var(--muted); font-size:13px;">No hay actualizaciones masivas cargadas todav\u00eda.</p>';
+    return;
+  }
+
+  listDiv.innerHTML = entries.map(([id, u]) => {
+    const rango = u.fecha_hasta ? `${u.fecha_desde} \u2192 ${u.fecha_hasta}` : `${u.fecha_desde} \u2192 Indefinido`;
+    const servicios = (u.servicios||[]).join(', ');
+    return `
+      <div class="bulk-update-item">
+        <div class="bulk-update-info">
+          <div><b>${rango}</b></div>
+          <div class="bulk-update-services">${(u.servicios||[]).length} servicio(s): ${servicios}</div>
+        </div>
+        <button type="button" class="bulk-del-btn" data-bulk-del="${id}">Eliminar</button>
+      </div>
+    `;
+  }).join('');
+
+  listDiv.querySelectorAll('[data-bulk-del]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if(!confirm('\u00bfEliminar esta actualizaci\u00f3n masiva? Los servicios afectados volver\u00e1n a su horario base.')) return;
+      await fbDelete(`bulk_updates/${btn.dataset.bulkDel}`);
+      await refreshBulkUpdatesCache();
+      renderBulkUpdatesList();
+      await render();
+    });
+  });
+}
+
+async function onBulkUploadClick(){
+  const btn = document.getElementById('bulkUploadBtn');
+  const resultDiv = document.getElementById('bulkUploadResult');
+  const fileInput = document.getElementById('bulkFileInput');
+  const fechaDesde = document.getElementById('bulkFechaDesde').value;
+  const indefinido = document.getElementById('bulkIndefinido').checked;
+  const fechaHasta = indefinido ? null : document.getElementById('bulkFechaHasta').value;
+
+  resultDiv.className = 'bus-upload-result';
+  resultDiv.style.display = 'none';
+
+  if(!fileInput.files[0]){
+    resultDiv.classList.add('error'); resultDiv.style.display = 'block';
+    resultDiv.textContent = 'Selecciona un archivo Excel primero.';
+    return;
+  }
+  if(!fechaDesde){
+    resultDiv.classList.add('error'); resultDiv.style.display = 'block';
+    resultDiv.textContent = 'Indica la fecha desde cu\u00e1ndo rige el cambio.';
+    return;
+  }
+  if(!indefinido && fechaHasta && fechaHasta < fechaDesde){
+    resultDiv.classList.add('error'); resultDiv.style.display = 'block';
+    resultDiv.textContent = 'La fecha "Hasta" no puede ser anterior a la fecha "Desde".';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Procesando...';
+  try{
+    const arrayBuffer = await fileInput.files[0].arrayBuffer();
+    const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+    if(rows.length === 0) throw new Error('El archivo no tiene filas.');
+
+    const { data, servicios, filasValidas, filasInvalidas } = buildBulkDataFromRows(rows);
+    if(servicios.length === 0) throw new Error('No se reconoci\u00f3 ning\u00fan servicio v\u00e1lido en el archivo.');
+
+    const id = 'upd_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+    const record = {
+      id, uploaded_at: Date.now(),
+      fecha_desde: fechaDesde, fecha_hasta: fechaHasta,
+      servicios, data
+    };
+    await fbSet(`bulk_updates/${id}`, record);
+    await refreshBulkUpdatesCache();
+
+    resultDiv.classList.add('ok'); resultDiv.style.display = 'block';
+    resultDiv.textContent = `Listo: ${servicios.length} servicio(s) actualizados (${filasValidas} filas le\u00eddas` + (filasInvalidas > 0 ? `, ${filasInvalidas} filas ignoradas por datos incompletos).` : ').');
+
+    fileInput.value = '';
+    renderBulkUpdatesList();
+    await render();
+  }catch(err){
+    console.error('Error procesando actualizaci\u00f3n masiva', err);
+    resultDiv.classList.add('error'); resultDiv.style.display = 'block';
+    resultDiv.textContent = 'No se pudo procesar el archivo: ' + err.message;
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Subir y aplicar';
+  }
+}
+
+document.getElementById('bulkMaintainerToggle').addEventListener('click', () => {
+  bulkPanelOpen = !bulkPanelOpen;
+  const panel = document.getElementById('bulkMaintainerPanel');
+  panel.style.display = bulkPanelOpen ? 'block' : 'none';
+  document.getElementById('bulkMaintainerToggle').textContent = bulkPanelOpen ? 'Cerrar Mantenedor Masivo de Horarios' : 'Abrir Mantenedor Masivo de Horarios';
+  if(bulkPanelOpen) renderBulkMaintainerPanel();
+});
 
 // ---------- Selectors ----------
 function populateServiceSelector(){
@@ -845,7 +1223,7 @@ function updateHeaderPills(){
 async function renderDirSection(dir){
   const info = getDayInfo(currentDate);
   const tipo = info.tipo_dia;
-  const flatSched = await getScheduleFlat(currentService, tipo);
+  const flatSched = await getEffectiveScheduleFlat(currentService, tipo, currentDate);
   const periods = groupByPeriod(flatSched[dir], tipo, false);
 
   const section = document.createElement('div');
@@ -932,8 +1310,23 @@ async function renderDirSection(dir){
       tbody.appendChild(tr);
     });
 
+    const extrasDelPeriodo = getExtrasForPeriod(dir, period.periodo_ts);
+    extrasDelPeriodo.forEach(ex => {
+      const tempTbody = document.createElement('tbody');
+      tempTbody.innerHTML = renderExtraRow(ex, dir, canEditRealData);
+      tbody.appendChild(tempTbody.querySelector('tr'));
+    });
+
     wrap.appendChild(tableScroll);
     tableScroll.appendChild(table);
+
+    if(canEditRealData){
+      const addRow = document.createElement('div');
+      addRow.className = 'add-extra-row';
+      addRow.innerHTML = `<button type="button" class="add-extra-btn" data-add-extra-dir="${dir}" data-add-extra-periodo="${period.periodo_ts}">+ Agregar salida adicional</button>`;
+      wrap.appendChild(addRow);
+    }
+
     section.appendChild(wrap);
     const progTimes = period.salidas.filter(s => (s.tipo||1) === 1).map(s=>s.hora);
     const realTimes = period.salidas
@@ -942,8 +1335,15 @@ async function renderDirSection(dir){
       .map(s => (realData[`${dir}|${s.hora}|${s.tipo}`]||{}).real)
       .filter(Boolean)
       .filter(r => r >= period.hora_inicio && r <= period.hora_fin);
+    // Las salidas adicionales Comerciales (no perdidas, con hora dentro del período)
+    // también cuentan para el intervalo real y la regularidad del período.
+    const extraRealTimes = extrasDelPeriodo
+      .filter(ex => (ex.tipo||1) === 1 && !ex.perdida && ex.real)
+      .map(ex => ex.real)
+      .filter(r => r >= period.hora_inicio && r <= period.hora_fin);
+    const allRealTimes = realTimes.concat(extraRealTimes);
     const progInt = computeIntervals(progTimes);
-    const realInt = computeIntervals(realTimes);
+    const realInt = computeIntervals(allRealTimes);
     const avgProg = progInt.length ? (progInt.reduce((a,b)=>a+b,0)/progInt.length) : null;
     const avgReal = realInt.length ? (realInt.reduce((a,b)=>a+b,0)/realInt.length).toFixed(1) : '-';
     let regularidad = '-'; let regClass = '';
@@ -959,7 +1359,7 @@ async function renderDirSection(dir){
     const avgProgLabel = avgProg !== null ? avgProg.toFixed(1) : '-';
     metricsDiv.innerHTML = `
       <span>Program.: <b>${progTimes.length}</b></span>
-      <span>Real: <b>${realTimes.length}</b></span>
+      <span>Real: <b>${allRealTimes.length}</b></span>
       <span>Interv. prog.: <b>${avgProgLabel}</b> min</span>
       <span>Interv. real: <b>${avgReal}</b> min</span>
       <span>Regularidad: <b class="metric-reg ${regClass}">${regularidad}</b></span>
@@ -982,17 +1382,53 @@ async function render(){
 
 function attachListeners(){
   document.querySelectorAll('.bus-input, .rol-input, .obs-input').forEach(inp => {
-    inp.addEventListener('change', onFieldChange);
+    inp.addEventListener('change', inp.dataset.extraId ? onExtraFieldChange : onFieldChange);
   });
   document.querySelectorAll('.hora-real-input').forEach(inp => {
-    inp.addEventListener('blur', onHoraRealChange);
+    inp.addEventListener('blur', inp.dataset.extraId ? onExtraHoraRealChange : onHoraRealChange);
   });
   document.querySelectorAll('.perdida-input').forEach(inp => {
-    inp.addEventListener('change', onFieldChange);
+    inp.addEventListener('change', inp.dataset.extraId ? onExtraFieldChange : onFieldChange);
+  });
+  document.querySelectorAll('.tiposalida-select').forEach(sel => {
+    sel.addEventListener('change', onExtraFieldChange);
   });
   document.querySelectorAll('.bus-input, .hora-real-input, .rol-input, .obs-input').forEach(inp => {
     inp.addEventListener('keydown', onEditableFieldKeydown);
   });
+  document.querySelectorAll('.add-extra-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      addExtraDeparture(btn.dataset.addExtraDir, Number(btn.dataset.addExtraPeriodo));
+    });
+  });
+  document.querySelectorAll('[data-del-extra]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      deleteExtraDeparture(btn.dataset.delExtra);
+    });
+  });
+}
+
+function onExtraFieldChange(e){
+  const id = e.target.dataset.extraId;
+  const ex = getExtras().find(x => x.id === id);
+  if(!ex) return;
+  if(e.target.classList.contains('bus-input')) ex.bus = e.target.value;
+  if(e.target.classList.contains('rol-input')) ex.rol = e.target.value;
+  if(e.target.classList.contains('hora-real-input')) ex.real = e.target.value;
+  if(e.target.classList.contains('obs-input')) ex.obs = e.target.value;
+  if(e.target.classList.contains('perdida-input')) ex.perdida = e.target.checked;
+  if(e.target.classList.contains('tiposalida-select')) ex.tipo = Number(e.target.value);
+  saveRealData();
+  render();
+}
+function onExtraHoraRealChange(e){
+  const val = normalizeTime(e.target.value);
+  const id = e.target.dataset.extraId;
+  const ex = getExtras().find(x => x.id === id);
+  const previous = ex ? (ex.real||'') : '';
+  e.target.value = val;
+  if(val === previous) return;
+  onExtraFieldChange(e);
 }
 
 // Enter / Tab move focus to the next editable cell in reading order (Bus →
@@ -1008,7 +1444,7 @@ function getEditableInputsInSection(dir){
 function onEditableFieldKeydown(e){
   if(e.key !== 'Enter' && e.key !== 'Tab') return;
   const inp = e.target;
-  const dir = (inp.dataset.key || '').split('|')[0];
+  const dir = inp.dataset.dir || (inp.dataset.key || '').split('|')[0];
   if(dir !== 'IDA' && dir !== 'REGRESO') return;
   e.preventDefault();
   moveToNextEditableField(inp, dir, e.key === 'Tab' && e.shiftKey);
@@ -1025,12 +1461,22 @@ async function moveToNextEditableField(inp, dir, backward){
   if(inp.classList.contains('hora-real-input')){
     inp.value = normalizeTime(inp.value);
   }
-  const key = inp.dataset.key;
-  if(!realData[key]) realData[key] = {bus:'', real:'', rol:'', obs:''};
-  if(inp.classList.contains('bus-input')) realData[key].bus = inp.value;
-  if(inp.classList.contains('rol-input')) realData[key].rol = inp.value;
-  if(inp.classList.contains('hora-real-input')) realData[key].real = inp.value;
-  if(inp.classList.contains('obs-input')) realData[key].obs = inp.value;
+  if(inp.dataset.extraId){
+    const ex = getExtras().find(x => x.id === inp.dataset.extraId);
+    if(ex){
+      if(inp.classList.contains('bus-input')) ex.bus = inp.value;
+      if(inp.classList.contains('rol-input')) ex.rol = inp.value;
+      if(inp.classList.contains('hora-real-input')) ex.real = inp.value;
+      if(inp.classList.contains('obs-input')) ex.obs = inp.value;
+    }
+  } else {
+    const key = inp.dataset.key;
+    if(!realData[key]) realData[key] = {bus:'', real:'', rol:'', obs:''};
+    if(inp.classList.contains('bus-input')) realData[key].bus = inp.value;
+    if(inp.classList.contains('rol-input')) realData[key].rol = inp.value;
+    if(inp.classList.contains('hora-real-input')) realData[key].real = inp.value;
+    if(inp.classList.contains('obs-input')) realData[key].obs = inp.value;
+  }
 
   await saveRealData();
   await render();
@@ -1194,9 +1640,13 @@ async function pollUpdates(){
       }
     }
   }catch(err){}
+  // also refresh bulk-updates cache periodically, in case an admin uploaded a new one
+  try{
+    const before = JSON.stringify(bulkUpdatesCache);
+    await refreshBulkUpdatesCache();
+    if(JSON.stringify(bulkUpdatesCache) !== before) await render();
+  }catch(err){}
 }
-
-// ---------- Admin Maintainer Panel ----------
 async function renderAdminPanel(){
   const panel = document.getElementById('adminPanel');
   panel.innerHTML = '';
@@ -1363,7 +1813,7 @@ async function exportExcelDelDia(){
 
     btn.textContent = 'Generando Excel...';
     for(const serv of SERVICIOS){
-      const flatSched = await getScheduleFlat(serv, tipodia);
+      const flatSched = await getEffectiveScheduleFlat(serv, tipodia, currentDate);
       const servRealData = realDataByService[serv] || {};
       const rows = [];
 
@@ -1389,6 +1839,26 @@ async function exportExcelDelDia(){
               'Tipo Salida': tipoInfo.label,
               'P\u00e9rdida': rec.perdida ? 'S\u00ed' : 'No',
               'Observaci\u00f3n': rec.obs || ''
+            });
+          });
+          // Salidas adicionales (no programadas) cargadas para este período/dirección.
+          const extras = (servRealData.extras || []).filter(ex => ex.dir === dir && ex.periodo_ts === period.periodo_ts);
+          extras.forEach(ex => {
+            const tipoBusReal = ex.bus ? (BUS_MAP_ACTIVE[String(ex.bus).trim()] || '?') : '';
+            const tipoInfo = tipoSalidaInfo(ex.tipo);
+            rows.push({
+              'Direcci\u00f3n': dir,
+              'Per\u00edodo': period.nombre,
+              'Hora Te\u00f3rica': 'Adicional',
+              'Bus': ex.bus || '',
+              'Tipo Bus Program.': '',
+              'Tipo Bus Real': tipoBusReal,
+              'Hora Real': ex.real || '',
+              'Rol Conductor': ex.rol || '',
+              'Estado': ex.real ? 'Registrada' : 'Pendiente',
+              'Tipo Salida': tipoInfo.label,
+              'P\u00e9rdida': ex.perdida ? 'S\u00ed' : 'No',
+              'Observaci\u00f3n': ex.obs || ''
             });
           });
         });
