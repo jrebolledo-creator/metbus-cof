@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Metbus COF - Control de Salidas</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#f8fafc; --panel:#ffffff; --panel2:#f1f5f9; --border:#e2e8f0;
@@ -375,6 +376,15 @@
   .dashboard-reg-mid{ color:var(--warn); font-weight:700; }
   .dashboard-reg-bad{ color:var(--bad); font-weight:700; }
   .dashboard-loading{ text-align:center; padding:40px; color:var(--muted); font-size:13px; }
+
+  .dashboard-charts{
+    display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:20px;
+  }
+  @media (max-width:800px){ .dashboard-charts{grid-template-columns:1fr;} }
+  .dashboard-chart-box{
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px;
+  }
+  .dashboard-chart-title{ font-size:12px; font-weight:700; color:var(--muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:.03em; }
 
   .serv-maint-list{ max-height:480px; overflow-y:auto; }
   .serv-maint-row{
@@ -2258,6 +2268,16 @@ async function renderDashboard(){
       <div class="dashboard-card ${regClassProm}"><div class="value">${regularidadProm !== null ? regularidadProm.toFixed(0) + '%' : '-'}</div><div class="label">Regularidad Prom.</div></div>
       <div class="dashboard-card ${totalPerdidas > 0 ? 'bad' : ''}"><div class="value">${totalPerdidas}</div><div class="label">P\u00e9rdidas</div></div>
     </div>
+    <div class="dashboard-charts">
+      <div class="dashboard-chart-box dashboard-chart-wide">
+        <div class="dashboard-chart-title">Regularidad por servicio y sentido</div>
+        <canvas id="dashboardChartReg" height="90"></canvas>
+      </div>
+      <div class="dashboard-chart-box">
+        <div class="dashboard-chart-title">Programadas vs Reales vs P\u00e9rdidas</div>
+        <canvas id="dashboardChartDona" height="90"></canvas>
+      </div>
+    </div>
     <div class="dashboard-table-wrap">
       <table class="dashboard-table">
         <thead><tr><th>Servicio</th><th>Sentido</th><th>Program.</th><th>Real</th><th>Regularidad</th><th>P\u00e9rdidas</th></tr></thead>
@@ -2278,6 +2298,60 @@ async function renderDashboard(){
     </div>
   `;
   document.getElementById('dashboardCloseBtn').addEventListener('click', () => { panel.style.display = 'none'; });
+  renderDashboardCharts(rows, totalProg, totalReal, totalPerdidas);
+}
+
+let dashboardChartRegInstance = null;
+let dashboardChartDonaInstance = null;
+function renderDashboardCharts(rows, totalProg, totalReal, totalPerdidas){
+  if(dashboardChartRegInstance){ dashboardChartRegInstance.destroy(); dashboardChartRegInstance = null; }
+  if(dashboardChartDonaInstance){ dashboardChartDonaInstance.destroy(); dashboardChartDonaInstance = null; }
+  if(typeof Chart === 'undefined') return;
+
+  const servicios = Array.from(new Set(rows.map(r => r.servicio)));
+  const idaData = servicios.map(s => {
+    const r = rows.find(x => x.servicio === s && x.dir === 'IDA');
+    return r && r.regularidad !== null ? Math.round(r.regularidad) : null;
+  });
+  const regresoData = servicios.map(s => {
+    const r = rows.find(x => x.servicio === s && x.dir === 'REGRESO');
+    return r && r.regularidad !== null ? Math.round(r.regularidad) : null;
+  });
+
+  const ctxReg = document.getElementById('dashboardChartReg');
+  if(ctxReg){
+    dashboardChartRegInstance = new Chart(ctxReg, {
+      type: 'bar',
+      data: {
+        labels: servicios,
+        datasets: [
+          { label: 'IDA', data: idaData, backgroundColor: '#2563eb' },
+          { label: 'REGRESO', data: regresoData, backgroundColor: '#9333ea' }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+
+  const ctxDona = document.getElementById('dashboardChartDona');
+  if(ctxDona){
+    const cumplidas = Math.max(totalReal - totalPerdidas, 0);
+    dashboardChartDonaInstance = new Chart(ctxDona, {
+      type: 'doughnut',
+      data: {
+        labels: ['Realizadas OK', 'P\u00e9rdidas', 'No registradas a\u00fan'],
+        datasets: [{
+          data: [cumplidas, totalPerdidas, Math.max(totalProg - totalReal, 0)],
+          backgroundColor: ['#16a34a', '#dc2626', '#94a3b8']
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
 }
 
 document.getElementById('dashboardBtn').addEventListener('click', () => {
