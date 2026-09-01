@@ -1828,14 +1828,14 @@ async function moveByOffset(inp, dir, offset){
     const ex = getExtras()[inp.dataset.extraId];
     if(ex && fieldName){
       ex[fieldName] = inp.value;
-      await saveExtraField(inp.dataset.extraId, fieldName, inp.value);
+      saveExtraField(inp.dataset.extraId, fieldName, inp.value); // se guarda en segundo plano, no bloquea el salto de casilla
     }
   } else {
     const key = inp.dataset.key;
     if(!realData[key]) realData[key] = {bus:'', real:'', rol:'', obs:''};
     if(fieldName){
       realData[key][fieldName] = inp.value;
-      await saveRowField(key, fieldName, inp.value);
+      saveRowField(key, fieldName, inp.value); // idem
     }
   }
 
