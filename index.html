@@ -8,14 +8,14 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root{
-    --bg:#f8fafc; --panel:#ffffff; --panel2:#f1f5f9; --border:#e2e8f0;
-    --text:#0f172a; --muted:#64748b; --accent:#2563eb; --accent2:#2563eb;
-    --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --pending:#94a3b8; --holiday:#9333ea;
+    --bg:#f4f5f7; --panel:#ffffff; --panel2:#eceef1; --border:#d7dbe1;
+    --text:#1f2430; --muted:#5b6472; --accent:#28516f; --accent2:#28516f;
+    --ok:#2e6b47; --warn:#9c6b1f; --bad:#a3352c; --pending:#8a94a3; --holiday:#5f4a78;
   }
   html.theme-dark{
-    --bg:#0f172a; --panel:#1e293b; --panel2:#16213a; --border:#2d3b57;
-    --text:#e5e9f0; --muted:#8b98b3; --accent:#3b82f6; --accent2:#60a5fa;
-    --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --pending:#475569; --holiday:#a855f7;
+    --bg:#12171e; --panel:#1a2029; --panel2:#151a22; --border:#2a3341;
+    --text:#dde1e6; --muted:#8b93a0; --accent:#4a7ba0; --accent2:#5b8caf;
+    --ok:#4a9066; --warn:#b98a3a; --bad:#c05a4f; --pending:#5c6673; --holiday:#7d6497;
   }
   *{box-sizing:border-box;}
   body{
@@ -37,20 +37,20 @@
 
   .role-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .role-btn{
-    padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; cursor:pointer;
+    padding:6px 14px; border-radius:5px; font-size:12px; font-weight:700; cursor:pointer;
     border:1px solid var(--border); background:var(--bg); color:var(--muted);
   }
   .role-btn.active{border-color:transparent;}
-  .role-btn.active.view{background:rgba(71,85,105,.4); color:var(--text);}
-  .role-btn.active.cof{background:rgba(59,130,246,.2); color:var(--accent2); border-color:var(--accent2);}
-  .role-btn.active.admin{background:rgba(168,85,247,.2); color:var(--holiday); border-color:var(--holiday);}
+  .role-btn.active.view{background:var(--panel2); color:var(--text); border-color:var(--muted);}
+  .role-btn.active.cof{background:rgba(40,81,111,.1); color:var(--accent2); border-color:var(--accent2);}
+  .role-btn.active.admin{background:rgba(95,74,120,.1); color:var(--holiday); border-color:var(--holiday);}
   .role-btn:hover{color:var(--text);}
 
   .export-btn{
-    padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;
-    border:1px solid var(--ok); background:rgba(34,197,94,.12); color:var(--ok);
+    padding:8px 16px; border-radius:5px; font-size:13px; font-weight:600; cursor:pointer;
+    border:1px solid var(--border); background:var(--panel2); color:var(--text);
   }
-  .export-btn:hover{background:rgba(34,197,94,.22);}
+  .export-btn:hover{background:var(--border);}
   .export-btn:disabled{opacity:.5; cursor:wait;}
 
   .theme-btn{
@@ -74,7 +74,7 @@
     background:var(--bg); border:1px solid var(--border); font-size:13px; font-weight:700;
     cursor:pointer; color:var(--muted);
   }
-  .pinned-tab.active{ background:rgba(59,130,246,.15); border-color:var(--accent2); color:var(--accent2); }
+  .pinned-tab.active{ background:rgba(40,81,111,.1); border-color:var(--accent2); color:var(--accent2); }
   .pinned-tab:hover{ color:var(--text); }
   .pinned-remove{ color:var(--muted); font-weight:900; padding:0 2px; line-height:1; }
   .pinned-remove:hover{ color:var(--bad); }
@@ -93,14 +93,14 @@
   #monthSelect{min-width:130px;}
   #daySelect{min-width:280px;}
   .tipo-pill{
-    padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+    padding:4px 12px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
   }
-  .tipo-pill.Laboral{background:rgba(59,130,246,.15); color:var(--accent2);}
-  .tipo-pill.Sabado{background:rgba(245,158,11,.15); color:var(--warn);}
-  .tipo-pill.Domingo{background:rgba(168,85,247,.15); color:var(--holiday);}
+  .tipo-pill.Laboral{background:rgba(40,81,111,.1); color:var(--accent2);}
+  .tipo-pill.Sabado{background:rgba(156,107,31,.1); color:var(--warn);}
+  .tipo-pill.Domingo{background:rgba(95,74,120,.1); color:var(--holiday);}
   .feriado-badge{
-    padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;
-    background:rgba(168,85,247,.2); color:var(--holiday);
+    padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700;
+    background:rgba(95,74,120,.15); color:var(--holiday);
   }
 
   .tabs{display:flex; gap:4px; padding:8px 16px 0; background:var(--panel); position:sticky; top:65px; z-index:29; border-bottom:1px solid var(--border);}
@@ -156,10 +156,9 @@
   .period-name{font-weight:700; font-size:14px;}
   .period-alert{
     display:inline-flex; align-items:center; gap:5px; margin-left:10px; padding:3px 10px;
-    border-radius:20px; font-size:11px; font-weight:800; background:rgba(239,68,68,.18); color:var(--bad);
-    animation:alertPulse 1.6s infinite;
+    border-radius:3px; font-size:11px; font-weight:700; background:rgba(163,53,44,.1);
+    color:var(--bad); border:1px solid rgba(163,53,44,.35);
   }
-  @keyframes alertPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
   .period-range{color:var(--muted); font-size:12px; font-weight:400; margin-left:8px;}
   .metrics{display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted);}
   .metrics b{color:var(--text); font-weight:600;}
@@ -188,24 +187,24 @@
   input[type=text]:focus{outline:none; border-color:var(--accent);}
   input.hora-real{max-width:80px;}
   .badge{
-    display:inline-block; padding:3px 6px; border-radius:14px; font-size:10px; font-weight:700;
+    display:inline-block; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:700;
     text-align:center; min-width:0; white-space:nowrap;
   }
-  .badge.ok{background:rgba(34,197,94,.15); color:var(--ok);}
-  .badge.atraso{background:rgba(239,68,68,.15); color:var(--bad);}
-  .badge.adelantado{background:rgba(245,158,11,.15); color:var(--warn);}
-  .badge.pendiente{background:rgba(71,85,105,.3); color:var(--muted);}
+  .badge.ok{background:rgba(46,107,71,.1); color:var(--ok); border:1px solid rgba(46,107,71,.3);}
+  .badge.atraso{background:rgba(163,53,44,.1); color:var(--bad); border:1px solid rgba(163,53,44,.3);}
+  .badge.adelantado{background:rgba(156,107,31,.1); color:var(--warn); border:1px solid rgba(156,107,31,.3);}
+  .badge.pendiente{background:var(--panel2); color:var(--muted); border:1px solid var(--border);}
 
   .tipo-salida{
-    display:inline-block; padding:3px 6px; border-radius:14px; font-size:10px; font-weight:700;
+    display:inline-block; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:700;
     text-align:center; white-space:nowrap;
   }
-  .tipo-salida.comercial{background:rgba(34,197,94,.15); color:var(--ok);}
-  .tipo-salida.posicionamiento{background:rgba(59,130,246,.15); color:var(--accent2);}
-  .tipo-salida.retorno{background:rgba(245,158,11,.15); color:var(--warn);}
+  .tipo-salida.comercial{background:rgba(46,107,71,.1); color:var(--ok); border:1px solid rgba(46,107,71,.3);}
+  .tipo-salida.posicionamiento{background:rgba(40,81,111,.1); color:var(--accent2); border:1px solid rgba(40,81,111,.3);}
+  .tipo-salida.retorno{background:rgba(156,107,31,.1); color:var(--warn); border:1px solid rgba(156,107,31,.3);}
 
-  tr.row-perdida td{ background:rgba(239,68,68,.16); }
-  tr.row-perdida:hover td{ background:rgba(239,68,68,.24); }
+  tr.row-perdida td{ background:rgba(163,53,44,.1); }
+  tr.row-perdida:hover td{ background:rgba(163,53,44,.16); }
   tr.row-perdida .hora-teo{ color:var(--bad); }
   .perdida-toggle{
     display:inline-flex; align-items:center; justify-content:center;
@@ -213,7 +212,7 @@
     border:1px solid var(--border); background:var(--panel2); color:var(--muted); cursor:pointer;
   }
   .perdida-toggle:hover{ border-color:var(--bad); color:var(--bad); }
-  .perdida-toggle.active{ background:rgba(239,68,68,.18); color:var(--bad); border-color:var(--bad); }
+  .perdida-toggle.active{ background:rgba(163,53,44,.12); color:var(--bad); border-color:var(--bad); }
   .perdida-toggle.readonly{ cursor:default; }
   .perdida-toggle.readonly:hover{ border-color:var(--border); color:var(--muted); }
   .perdida-toggle.readonly.active:hover{ border-color:var(--bad); color:var(--bad); }
@@ -223,10 +222,10 @@
     text-align:center; min-width:0;
   }
   .bus-tipo.neutral{ background:var(--panel2); color:var(--muted); }
-  .bus-tipo.ok{ background:rgba(34,197,94,.18); color:var(--ok); }
-  .bus-tipo.bad{ background:rgba(239,68,68,.18); color:var(--bad); }
-  .bus-tipo.warn{ background:rgba(245,158,11,.18); color:var(--warn); }
-  .bus-tipo.unknown{ background:rgba(148,163,184,.2); color:var(--muted); }
+  .bus-tipo.ok{ background:rgba(46,107,71,.12); color:var(--ok); }
+  .bus-tipo.bad{ background:rgba(163,53,44,.12); color:var(--bad); }
+  .bus-tipo.warn{ background:rgba(156,107,31,.12); color:var(--warn); }
+  .bus-tipo.unknown{ background:var(--panel2); color:var(--muted); }
 
   tr.row-extra td{ background:rgba(37,99,235,.06); border-left:3px solid var(--accent2); }
   .extra-tag{
@@ -258,17 +257,17 @@
     max-width:1700px; margin:12px auto 0; padding:0 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;
   }
   .admin-toggle-btn{
-    padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;
-    border:1px solid var(--holiday); background:rgba(168,85,247,.12); color:var(--holiday);
+    padding:8px 16px; border-radius:5px; font-size:13px; font-weight:600; cursor:pointer;
+    border:1px solid var(--border); background:var(--panel2); color:var(--text);
   }
-  .admin-toggle-btn:hover{background:rgba(168,85,247,.22);}
+  .admin-toggle-btn:hover{background:var(--border);}
   .admin-panel{
     max-width:1700px; margin:16px auto; padding:0 16px;
     display:grid; grid-template-columns:1fr 1fr; gap:24px;
   }
   @media (max-width:900px){ .admin-panel{grid-template-columns:1fr;} }
-  .admin-dir-block{background:var(--panel); border:1px solid var(--holiday); border-radius:10px; padding:14px; min-width:0;}
-  .admin-dir-title{font-weight:800; color:var(--holiday); margin-bottom:10px; font-size:15px;}
+  .admin-dir-block{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; min-width:0;}
+  .admin-dir-title{font-weight:600; color:var(--text); margin-bottom:10px; font-size:15px;}
   .admin-add-row{
     display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center;
     background:var(--panel2); padding:10px; border-radius:8px;
@@ -288,17 +287,17 @@
   .admin-dep-row input[type=text]{width:70px;}
   .admin-dep-row select{flex:1; padding:5px 6px; font-size:12px;}
   .admin-del-btn{
-    background:rgba(239,68,68,.15); color:var(--bad); border:none; border-radius:6px;
+    background:rgba(163,53,44,.1); color:var(--bad); border:none; border-radius:6px;
     padding:5px 9px; font-size:12px; font-weight:700; cursor:pointer;
   }
-  .admin-del-btn:hover{background:rgba(239,68,68,.3);}
+  .admin-del-btn:hover{background:rgba(163,53,44,.2);}
   .admin-empty-period{color:var(--muted); font-size:12px; padding:4px; font-style:italic;}
 
   .bus-maintainer-panel{
     max-width:700px; margin:16px auto; padding:20px; background:var(--panel);
-    border:1px solid var(--holiday); border-radius:10px;
+    border:1px solid var(--border); border-radius:8px;
   }
-  .bus-maintainer-panel h3{margin:0 0 10px; font-size:16px; color:var(--holiday);}
+  .bus-maintainer-panel h3{margin:0 0 10px; font-size:16px; color:var(--text); font-weight:600;}
   .bus-maintainer-panel p{margin:0 0 14px; font-size:13px; color:var(--muted); line-height:1.5;}
   .bus-maintainer-panel input[type=file]{
     display:block; margin-bottom:12px; font-size:13px; color:var(--text);
@@ -306,10 +305,10 @@
   .bus-upload-result{
     margin-top:12px; padding:10px 12px; border-radius:8px; font-size:13px; display:none;
   }
-  .bus-upload-result.ok{ display:block; background:rgba(34,197,94,.12); color:var(--ok); }
-  .bus-upload-result.error{ display:block; background:rgba(239,68,68,.12); color:var(--bad); }
+  .bus-upload-result.ok{ display:block; background:rgba(46,107,71,.1); color:var(--ok); }
+  .bus-upload-result.error{ display:block; background:rgba(163,53,44,.1); color:var(--bad); }
   .bus-count-badge{
-    display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700;
+    display:inline-block; padding:4px 10px; border-radius:5px; font-size:12px; font-weight:700;
     background:var(--panel2); color:var(--muted); margin-left:8px;
   }
 
@@ -323,10 +322,10 @@
     padding:6px 8px; font-size:13px;
   }
   .bulk-upload-btn{
-    padding:8px 18px; border-radius:8px; background:var(--holiday); color:white; border:none;
-    font-weight:700; font-size:13px; cursor:pointer; margin-top:4px;
+    padding:8px 18px; border-radius:5px; background:var(--accent); color:white; border:none;
+    font-weight:600; font-size:13px; cursor:pointer; margin-top:4px;
   }
-  .bulk-upload-btn:hover{ filter:brightness(1.1); }
+  .bulk-upload-btn:hover{ filter:brightness(1.15); }
   .bulk-upload-btn:disabled{ opacity:.5; cursor:wait; }
   .bulk-updates-list{ margin-top:18px; }
   .bulk-update-item{
@@ -337,17 +336,17 @@
   .bulk-update-info b{ color:var(--text); }
   .bulk-update-services{ color:var(--muted); font-size:12px; margin-top:2px; }
   .bulk-del-btn{
-    background:rgba(239,68,68,.15); color:var(--bad); border:none; border-radius:6px;
+    background:rgba(163,53,44,.1); color:var(--bad); border:none; border-radius:6px;
     padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
   }
-  .bulk-del-btn:hover{ background:rgba(239,68,68,.3); }
+  .bulk-del-btn:hover{ background:rgba(163,53,44,.2); }
 
   .dashboard-panel{
     max-width:1200px; margin:16px auto; padding:20px; background:var(--panel);
-    border:1px solid var(--accent2); border-radius:10px;
+    border:1px solid var(--border); border-radius:8px;
   }
   .dashboard-header{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
-  .dashboard-header h3{ margin:0; font-size:16px; color:var(--accent2); }
+  .dashboard-header h3{ margin:0; font-size:16px; color:var(--text); font-weight:600; }
   .dashboard-close-btn{
     background:var(--panel2); color:var(--muted); border:none; border-radius:6px;
     padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;
@@ -928,6 +927,7 @@ function setRole(role){
   updateRoleButtons();
   updateCofIdentityDisplay();
   updateAdminUI();
+  renderPinnedBar();
   render();
 }
 
@@ -942,7 +942,7 @@ document.getElementById('roleBtnView').addEventListener('click', () => setRole('
 document.getElementById('roleBtnCof').addEventListener('click', () => {
   if(currentRole === 'cof'){
     // Ya est\u00e1s en modo COF: permite cambiar de identificador sin pedir clave de nuevo.
-    showIdentityModal(() => updateCofIdentityDisplay());
+    showIdentityModal(() => { updateCofIdentityDisplay(); renderPinnedBar(); });
     return;
   }
   if(currentRole === 'admin') return;
@@ -1385,14 +1385,20 @@ function populateServiceSelector(){
   }
 }
 
-// ---------- Servicios fijados (como pestañas), guardados en este navegador ----------
-const PINNED_STORAGE_KEY = 'metbus_pinned_services';
+// ---------- Servicios fijados (como pestañas), guardados por identidad ----------
+// Se guardan por persona (COF1, COF2, etc.), no de forma general en el
+// navegador, para que si varias personas comparten el mismo dispositivo,
+// cada una vea solo sus propios servicios fijados al elegir su identificador.
+function getPinnedStorageKey(){
+  const identity = getCofIdentity();
+  return (currentRole === 'cof' && identity) ? `metbus_pinned_${identity}` : 'metbus_pinned_default';
+}
 function getPinnedServices(){
-  try{ return JSON.parse(localStorage.getItem(PINNED_STORAGE_KEY) || '[]'); }
+  try{ return JSON.parse(localStorage.getItem(getPinnedStorageKey()) || '[]'); }
   catch(err){ return []; }
 }
 function setPinnedServices(list){
-  try{ localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(list)); }catch(err){}
+  try{ localStorage.setItem(getPinnedStorageKey(), JSON.stringify(list)); }catch(err){}
 }
 function renderPinnedBar(){
   const bar = document.getElementById('pinnedBar');
@@ -1531,8 +1537,11 @@ async function renderDirSection(dir){
   const canEditRealData = (currentRole === 'cof' || currentRole === 'admin');
   const esHoyEnChile = (currentDate === getChileTodayDateStr());
   const MUY_ATRASADO_MIN = 15; // minutos de atraso para considerar la alerta "muy atrasado"
+  const MINUTOS_PARA_PERDIDA_AUTOMATICA = 30;
 
   periods.forEach(period => {
+    if(esHoyEnChile) autoMarcarPerdidas(dir, period, MINUTOS_PARA_PERDIDA_AUTOMATICA);
+
     const wrap = document.createElement('div');
     wrap.className = 'period';
     const header = document.createElement('div');
@@ -1912,6 +1921,35 @@ function saveExtraField(extraId, fieldName, value){
   saveQueue = thisSave;
   return thisSave.finally(() => setSyncing(false));
 }
+
+// Si una salida qued\u00f3 pendiente (sin hora real, sin marcar p\u00e9rdida) y ya
+// pasaron los minutos indicados desde que termin\u00f3 su per\u00edodo, se marca sola
+// como p\u00e9rdida. Solo aplica al d\u00eda de hoy (evita marcar autom\u00e1ticamente
+// datos hist\u00f3ricos que alguien pueda estar revisando).
+function autoMarcarPerdidas(dir, period, minutosEspera){
+  const nowMin = getChileNowMinutes();
+  const finMin = timeToMinutes(period.hora_fin);
+  if(nowMin - finMin < minutosEspera) return;
+
+  period.salidas.forEach(sal => {
+    const key = `${dir}|${sal.hora}|${sal.tipo}`;
+    const rec = realData[key];
+    if(rec && (rec.perdida || rec.real)) return; // ya tiene dato o ya est\u00e1 marcada
+    if(!realData[key]) realData[key] = {bus:'', real:'', rol:'', obs:'', perdida:false};
+    realData[key].perdida = true;
+    autoSavePerdida(key);
+  });
+}
+function autoSavePerdida(key){
+  const patch = { perdida: true, editado_por: `Autom\u00e1tico (sin registro tras 30 min)`, editado_ts: Date.now() };
+  const thisSave = saveQueue.then(async () => {
+    try{ await fbPatch(`${realDataPath(currentService, currentDate)}/${key}`, patch); }
+    catch(err){ console.error('Error auto-marcando p\u00e9rdida', err); }
+  });
+  saveQueue = thisSave;
+  return thisSave;
+}
+
 async function saveRealData(){
   setSyncing(true);
   // Chain saves one after another (never in parallel). Each save reads
@@ -2211,6 +2249,7 @@ syncTimer = setInterval(pollUpdates, 8000);
 function computeDirDayStats(dir, flatSchedDir, tipodia, realDataObj){
   const periods = groupByPeriod(flatSchedDir, tipodia, false);
   let prog = 0, realCount = 0, cumplen = 0, totalIntervals = 0, perdidas = 0;
+  let sumProgInt = 0, countProgInt = 0, sumRealInt = 0, countRealInt = 0;
 
   periods.forEach(period => {
     const progTimes = period.salidas.filter(s => (s.tipo||1) === 1).map(s => s.hora);
@@ -2240,6 +2279,16 @@ function computeDirDayStats(dir, flatSchedDir, tipodia, realDataObj){
 
     const progInt = computeIntervals(progTimes);
     const realInt = computeIntervals(allReal);
+
+    if(progInt.length){
+      sumProgInt += progInt.reduce((a,b) => a+b, 0);
+      countProgInt += progInt.length;
+    }
+    if(realInt.length){
+      sumRealInt += realInt.reduce((a,b) => a+b, 0);
+      countRealInt += realInt.length;
+    }
+
     const avgProg = progInt.length ? (progInt.reduce((a,b)=>a+b,0)/progInt.length) : null;
     if(realInt.length >= 1 && avgProg !== null && avgProg > 0){
       const holgura = Math.min(30, Math.max(3, avgProg * 0.4));
@@ -2250,7 +2299,9 @@ function computeDirDayStats(dir, flatSchedDir, tipodia, realDataObj){
   });
 
   const regularidad = totalIntervals > 0 ? (cumplen / totalIntervals * 100) : null;
-  return { prog, real: realCount, regularidad, perdidas };
+  const freqTeorica = countProgInt > 0 ? (sumProgInt / countProgInt) : null;
+  const freqReal = countRealInt > 0 ? (sumRealInt / countRealInt) : null;
+  return { prog, real: realCount, regularidad, perdidas, freqTeorica, freqReal, sumProgInt, countProgInt, sumRealInt, countRealInt };
 }
 
 async function renderDashboard(){
@@ -2287,6 +2338,16 @@ async function renderDashboard(){
   const regClassProm = regularidadProm === null ? '' : (regularidadProm >= 85 ? 'good' : (regularidadProm >= 65 ? 'warn' : 'bad'));
   const tituloTerminal = filtro || 'Todos los servicios';
 
+  // Frecuencia (intervalo promedio entre salidas) ponderada correctamente
+  // sumando los minutos y la cantidad de intervalos de todos los servicios,
+  // en vez de promediar promedios (eso sesgar\u00eda hacia servicios con pocos datos).
+  const sumProgIntTotal = rows.reduce((a,r) => a + r.sumProgInt, 0);
+  const countProgIntTotal = rows.reduce((a,r) => a + r.countProgInt, 0);
+  const sumRealIntTotal = rows.reduce((a,r) => a + r.sumRealInt, 0);
+  const countRealIntTotal = rows.reduce((a,r) => a + r.countRealInt, 0);
+  const freqTeoricaProm = countProgIntTotal > 0 ? (sumProgIntTotal / countProgIntTotal) : null;
+  const freqRealProm = countRealIntTotal > 0 ? (sumRealIntTotal / countRealIntTotal) : null;
+
   panel.innerHTML = `
     <div class="dashboard-header">
       <h3>\u{1F4CA} Dashboard &mdash; ${tituloTerminal} &mdash; ${currentDate}</h3>
@@ -2296,6 +2357,8 @@ async function renderDashboard(){
       <div class="dashboard-card"><div class="value">${servicios.length}</div><div class="label">Servicios</div></div>
       <div class="dashboard-card"><div class="value">${totalProg}</div><div class="label">Programadas</div></div>
       <div class="dashboard-card"><div class="value">${totalReal}</div><div class="label">Reales</div></div>
+      <div class="dashboard-card"><div class="value">${freqTeoricaProm !== null ? freqTeoricaProm.toFixed(1) : '-'}</div><div class="label">Frecuencia Te\u00f3r. (min)</div></div>
+      <div class="dashboard-card"><div class="value">${freqRealProm !== null ? freqRealProm.toFixed(1) : '-'}</div><div class="label">Frecuencia Real (min)</div></div>
       <div class="dashboard-card ${regClassProm}"><div class="value">${regularidadProm !== null ? regularidadProm.toFixed(0) + '%' : '-'}</div><div class="label">Regularidad Prom.</div></div>
       <div class="dashboard-card ${totalPerdidas > 0 ? 'bad' : ''}"><div class="value">${totalPerdidas}</div><div class="label">P\u00e9rdidas</div></div>
     </div>
@@ -2309,9 +2372,15 @@ async function renderDashboard(){
         <canvas id="dashboardChartDona" height="90"></canvas>
       </div>
     </div>
+    <div class="dashboard-charts">
+      <div class="dashboard-chart-box dashboard-chart-wide">
+        <div class="dashboard-chart-title">Frecuencia (minutos entre salidas) &mdash; Te\u00f3rica vs Real, por servicio</div>
+        <canvas id="dashboardChartFreq" height="90"></canvas>
+      </div>
+    </div>
     <div class="dashboard-table-wrap">
       <table class="dashboard-table">
-        <thead><tr><th>Servicio</th><th>Sentido</th><th>Program.</th><th>Real</th><th>Regularidad</th><th>P\u00e9rdidas</th></tr></thead>
+        <thead><tr><th>Servicio</th><th>Sentido</th><th>Program.</th><th>Real</th><th>Frec. Te\u00f3r.</th><th>Frec. Real</th><th>Regularidad</th><th>P\u00e9rdidas</th></tr></thead>
         <tbody>
           ${rows.map(r => {
             const regClass = r.regularidad === null ? '' : (r.regularidad >= 85 ? 'dashboard-reg-good' : (r.regularidad >= 65 ? 'dashboard-reg-mid' : 'dashboard-reg-bad'));
@@ -2320,6 +2389,8 @@ async function renderDashboard(){
               <td>${r.dir}</td>
               <td>${r.prog}</td>
               <td>${r.real}</td>
+              <td>${r.freqTeorica !== null ? r.freqTeorica.toFixed(1) + ' min' : '-'}</td>
+              <td>${r.freqReal !== null ? r.freqReal.toFixed(1) + ' min' : '-'}</td>
               <td class="${regClass}">${r.regularidad !== null ? r.regularidad.toFixed(0) + '%' : '-'}</td>
               <td>${r.perdidas}</td>
             </tr>`;
@@ -2334,11 +2405,13 @@ async function renderDashboard(){
 
 let dashboardChartRegInstance = null;
 let dashboardChartDonaInstance = null;
+let dashboardChartFreqInstance = null;
 function renderDashboardCharts(rows, totalProg, totalReal, totalPerdidas){
   if(dashboardChartRegInstance){ dashboardChartRegInstance.destroy(); dashboardChartRegInstance = null; }
   if(dashboardChartDonaInstance){ dashboardChartDonaInstance.destroy(); dashboardChartDonaInstance = null; }
+  if(dashboardChartFreqInstance){ dashboardChartFreqInstance.destroy(); dashboardChartFreqInstance = null; }
   if(typeof Chart === 'undefined'){
-    ['dashboardChartReg','dashboardChartDona'].forEach(id => {
+    ['dashboardChartReg','dashboardChartDona','dashboardChartFreq'].forEach(id => {
       const el = document.getElementById(id);
       if(el && el.parentElement){
         el.parentElement.innerHTML = '<div class="dashboard-chart-title">No se pudo cargar la librer\u00eda de gr\u00e1ficos (Chart.js). Revisa tu conexi\u00f3n a internet o recarga la p\u00e1gina.</div>';
@@ -2364,8 +2437,8 @@ function renderDashboardCharts(rows, totalProg, totalReal, totalPerdidas){
       data: {
         labels: servicios,
         datasets: [
-          { label: 'IDA', data: idaData, backgroundColor: '#2563eb' },
-          { label: 'REGRESO', data: regresoData, backgroundColor: '#9333ea' }
+          { label: 'IDA', data: idaData, backgroundColor: '#28516f' },
+          { label: 'REGRESO', data: regresoData, backgroundColor: '#5f4a78' }
         ]
       },
       options: {
@@ -2385,10 +2458,41 @@ function renderDashboardCharts(rows, totalProg, totalReal, totalPerdidas){
         labels: ['Realizadas OK', 'P\u00e9rdidas', 'No registradas a\u00fan'],
         datasets: [{
           data: [cumplidas, totalPerdidas, Math.max(totalProg - totalReal, 0)],
-          backgroundColor: ['#16a34a', '#dc2626', '#94a3b8']
+          backgroundColor: ['#2e6b47', '#a3352c', '#8a94a3']
         }]
       },
       options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+
+  // Frecuencia por servicio: combina IDA+REGRESO ponderando por cantidad de
+  // intervalos, para no promediar promedios de forma injusta.
+  const ctxFreq = document.getElementById('dashboardChartFreq');
+  if(ctxFreq){
+    const freqTeoricaData = [], freqRealData = [];
+    servicios.forEach(s => {
+      const filas = rows.filter(x => x.servicio === s);
+      const sumProg = filas.reduce((a,r) => a + r.sumProgInt, 0);
+      const cntProg = filas.reduce((a,r) => a + r.countProgInt, 0);
+      const sumReal = filas.reduce((a,r) => a + r.sumRealInt, 0);
+      const cntReal = filas.reduce((a,r) => a + r.countRealInt, 0);
+      freqTeoricaData.push(cntProg > 0 ? Number((sumProg/cntProg).toFixed(1)) : null);
+      freqRealData.push(cntReal > 0 ? Number((sumReal/cntReal).toFixed(1)) : null);
+    });
+    dashboardChartFreqInstance = new Chart(ctxFreq, {
+      type: 'bar',
+      data: {
+        labels: servicios,
+        datasets: [
+          { label: 'Frecuencia Te\u00f3rica (min)', data: freqTeoricaData, backgroundColor: '#8a94a3' },
+          { label: 'Frecuencia Real (min)', data: freqRealData, backgroundColor: '#28516f' }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'minutos' } } },
+        plugins: { legend: { position: 'bottom' } }
+      }
     });
   }
 }
